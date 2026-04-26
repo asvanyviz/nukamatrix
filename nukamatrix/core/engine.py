@@ -4,18 +4,18 @@ import signal
 import time
 from blessed import Terminal
 
-from pymatrix.config import Config, COLUMN_STEP
-from pymatrix.core.matrix import Cell, Column
-from pymatrix.core.renderer import Renderer
-from pymatrix.modes import DisplayMode
-from pymatrix.panels.layout import (
+from nukamatrix.config import Config, COLUMN_STEP
+from nukamatrix.core.matrix import Cell, Column
+from nukamatrix.core.renderer import Renderer
+from nukamatrix.modes import DisplayMode
+from nukamatrix.panels.layout import (
     LayoutDefinition,
     layout_full_matrix,
     layout_matrix_sidebar,
     layout_quarter_grid,
 )
-from pymatrix.panels.sysinfo import CpuPanel, MemPanel, DiskPanel, NetPanel, ClockPanel
-from pymatrix.utils.sysinfo import SysInfoCollector
+from nukamatrix.panels.sysinfo import CpuPanel, MemPanel, DiskPanel, NetPanel, ClockPanel
+from nukamatrix.utils.sysinfo import SysInfoCollector
 
 
 class MultiModeEngine:

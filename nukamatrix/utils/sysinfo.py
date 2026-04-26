@@ -217,7 +217,7 @@ class SysInfoCollector:
         self.prev_time = now
 
         # ── Meta ─────────────────────────────
-        s.uptime_sec = time.monotonic() - self.prev_time  # pymatrix uptime
+        s.uptime_sec = time.monotonic() - self.prev_time  # nukamatrix uptime
         try:
             s.hostname = psutil.users()[0].host if psutil.users() else ""
         except Exception:

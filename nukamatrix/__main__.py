@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PyMatrix entry point — allows `python -m pymatrix` to work.
+"""PyMatrix entry point — allows `python -m nukamatrix` to work.
 
 Supports multi-mode display:
   pure-matrix     Full-screen matrix rain (classic)
@@ -13,20 +13,20 @@ Press Tab to cycle modes at runtime (when not in screensaver mode).
 import argparse
 import sys
 
-from pymatrix.config import Config, COLOR_MAP, ALLOWED_MODES
-from pymatrix.modes import DisplayMode
+from nukamatrix.config import Config, COLOR_MAP, ALLOWED_MODES
+from nukamatrix.modes import DisplayMode
 
 __version__ = "0.1.0"
 
 
 def parse_args() -> Config:
     parser = argparse.ArgumentParser(
-        prog="pymatrix",
+        prog="nukamatrix",
         description=(
             "PyMatrix — Terminal Matrix Rain screensaver\n\n"
             "A Python reimagining of cmatrix with multi-mode display, "
             "system info panels, and per-frame color cycling.\n"
-            "Config file: ~/.pymatrix.conf or XDG_CONFIG_HOME/pymatrix/pymatrix.conf"
+            "Config file: ~/.nukamatrix.conf or XDG_CONFIG_HOME/nukamatrix/nukamatrix.conf"
         ),
         epilog=(
             "Modes:\n"
@@ -38,7 +38,7 @@ def parse_args() -> Config:
             "  q / ESC    Quit\n"
             "  Tab        Cycle display modes\n"
             "  Any key    Exit screensaver mode\n\n"
-            "Home: https://github.com/asvanyviz/pymatrix"
+            "Home: https://github.com/asvanyviz/nukamatrix"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -131,7 +131,7 @@ def parse_args() -> Config:
         type=str,
         default=None,
         metavar="FILE",
-        help="Path to config INI file (default: ~/.pymatrix.conf)",
+        help="Path to config INI file (default: ~/.nukamatrix.conf)",
     )
 
     args = parser.parse_args()
@@ -156,7 +156,7 @@ def main():
     config = parse_args()
 
     # Use MultiModeEngine from core.engine
-    from pymatrix.core.engine import MultiModeEngine
+    from nukamatrix.core.engine import MultiModeEngine
     engine = MultiModeEngine(config)
 
     try:

@@ -4,8 +4,8 @@ import time
 
 from blessed import Terminal
 
-from pymatrix.panels.base import Panel
-from pymatrix.utils.sysinfo import SysSnapshot, SysInfoCollector
+from nukamatrix.panels.base import Panel
+from nukamatrix.utils.sysinfo import SysSnapshot, SysInfoCollector
 
 
 # ── Color helpers ──────────────────────────────────────────────

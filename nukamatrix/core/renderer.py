@@ -8,8 +8,8 @@ Supports zone rendering: only render a rectangular sub-region of the grid.
 
 from blessed import Terminal
 
-from pymatrix.config import Config
-from pymatrix.core.matrix import Cell
+from nukamatrix.config import Config
+from nukamatrix.core.matrix import Cell
 
 
 class Renderer:

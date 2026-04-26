@@ -21,7 +21,7 @@ A Python terminal screensaver that recreates the iconic Matrix falling-character
 - **📺 Screensaver Mode** — Exit on any key press
 - **🎯 Zone Rendering** — Only updates visible regions, no wasted terminal I/O
 - **🔥 Anti Burn-in** — Color-cycling panels with pulsing borders
-- **📦 Pip Installable** — `pip install pymatrix` (or editable)
+- **📦 Pip Installable** — `pip install nukamatrix` (or editable)
 - **🐧 Linux / macOS** — Works anywhere Python 3.10+ runs
 
 ## 📸 Screenshots
@@ -61,14 +61,14 @@ A Python terminal screensaver that recreates the iconic Matrix falling-character
 
 ```bash
 # From PyPI (when published)
-pip install pymatrix
+pip install nukamatrix
 
 # From source
-pip install git+https://github.com/asvanyviz/pymatrix.git
+pip install git+https://github.com/asvanyviz/nukamatrix.git
 
 # Or download, unzip, and install editable
-git clone https://github.com/asvanyviz/pymatrix.git
-cd pymatrix
+git clone https://github.com/asvanyviz/nukamatrix.git
+cd nukamatrix
 pip install -e .
 ```
 
@@ -76,16 +76,16 @@ pip install -e .
 
 ```bash
 # Default (green matrix rain)
-pymatrix
+nukamatrix
 
 # With options
-pymatrix --mode matrix+stats --color red --speed 6
+nukamatrix --mode matrix+stats --color red --speed 6
 
 # Lambda mode (the lambda one 🐑)
-pymatrix --lambda --rainbow
+nukamatrix --lambda --rainbow
 
 # Screensaver mode — exit on any key
-pymatrix -s
+nukamatrix -s
 ```
 
 ## 🎮 Controls
@@ -99,7 +99,7 @@ pymatrix -s
 ## 📋 CLI Reference
 
 ```
-Usage: pymatrix [OPTIONS]
+Usage: nukamatrix [OPTIONS]
 
 Options:
   -V, --version         Show version and exit
@@ -114,17 +114,17 @@ Options:
   --bold                Enable bold characters
   --no-bold             Disable bold
   -s, --s               Screensaver mode — exit on any key
-  --config FILE         Path to config INI file (default: ~/.pymatrix.conf)
+  --config FILE         Path to config INI file (default: ~/.nukamatrix.conf)
   -h, --help            Show help message and exit
 ```
 
 ## ⚙️ Configuration File
 
-PyMatrix reads an INI config file for persistent defaults. Supports both legacy `~/.pymatrix.conf` and XDG spec `~/.config/pymatrix/pymatrix.conf`.
+PyMatrix reads an INI config file for persistent defaults. Supports both legacy `~/.nukamatrix.conf` and XDG spec `~/.config/nukamatrix/nukamatrix.conf`.
 
 **Precedence:** CLI arguments > config file > hardcoded defaults
 
-### Example `~/.pymatrix.conf`
+### Example `~/.nukamatrix.conf`
 
 ```ini
 [display]
@@ -154,7 +154,7 @@ charset = mixed
 ## 🛠 Architecture
 
 ```
-pymatrix/
+nukamatrix/
 ├── __init__.py          # package version
 ├── __main__.py          # CLI entry point (argparse + boot)
 ├── config.py            # dataclass, constants, config file loader
@@ -200,7 +200,7 @@ pip install -e ".[dev]"
 pytest
 
 # Lint
-ruff check pymatrix/ tests/
+ruff check nukamatrix/ tests/
 
 # Build package
 python -m build

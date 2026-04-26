@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pymatrix"
+name = "nukamatrix"
 version = "0.1.0"
 description = "Matrix Rain screensaver for the terminal — inspired by cmatrix, reimagined in Python"
 readme = "README.md"
@@ -38,15 +38,15 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/asvanyviz/pymatrix"
-Repository = "https://github.com/asvanyviz/pymatrix"
-Issues = "https://github.com/asvanyviz/pymatrix/issues"
+Homepage = "https://github.com/asvanyviz/nukamatrix"
+Repository = "https://github.com/asvanyviz/nukamatrix"
+Issues = "https://github.com/asvanyviz/nukamatrix/issues"
 
 [project.scripts]
-pymatrix = "pymatrix.__main__:main"
+nukamatrix = "nukamatrix.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["pymatrix*"]
+include = ["nukamatrix*"]
 
 [tool.ruff]
 target-version = "py310"

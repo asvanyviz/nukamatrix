@@ -1,9 +1,9 @@
-"""Tests for pymatrix.core.matrix — Cell and Column data model."""
+"""Tests for nukamatrix.core.matrix — Cell and Column data model."""
 
 import pytest
 import random
 
-from pymatrix.core.matrix import Cell, Column, _NO_STREAM
+from nukamatrix.core.matrix import Cell, Column, _NO_STREAM
 
 
 class TestCell:

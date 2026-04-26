@@ -2,7 +2,7 @@
 
 Supports three-tier config precedence (highest overrides lowest):
   1. CLI arguments
-  2. Config file (~/.pymatrix.conf or XDG_CONFIG_HOME/pymatrix/pymatrix.conf)
+  2. Config file (~/.nukamatrix.conf or XDG_CONFIG_HOME/nukamatrix/nukamatrix.conf)
   3. Hardcoded defaults
 """
 
@@ -82,11 +82,11 @@ def _get_config_paths() -> list[str]:
     # XDG spec
     xdg_home = os.environ.get("XDG_CONFIG_HOME")
     if xdg_home:
-        paths.append(os.path.join(xdg_home, "pymatrix", "pymatrix.conf"))
-    # ~/.config/pymatrix/pymatrix.conf
-    paths.append(os.path.expanduser("~/.config/pymatrix/pymatrix.conf"))
-    # ~/.pymatrix.conf (legacy/simple)
-    paths.append(os.path.expanduser("~/.pymatrix.conf"))
+        paths.append(os.path.join(xdg_home, "nukamatrix", "nukamatrix.conf"))
+    # ~/.config/nukamatrix/nukamatrix.conf
+    paths.append(os.path.expanduser("~/.config/nukamatrix/nukamatrix.conf"))
+    # ~/.nukamatrix.conf (legacy/simple)
+    paths.append(os.path.expanduser("~/.nukamatrix.conf"))
     return paths
 
 

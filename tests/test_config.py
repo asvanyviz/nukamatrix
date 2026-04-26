@@ -1,10 +1,10 @@
-"""Tests for pymatrix.config module."""
+"""Tests for nukamatrix.config module."""
 
 import pytest
 import tempfile
 import os
 
-from pymatrix.config import (
+from nukamatrix.config import (
     Config,
     COLOR_MAP,
     ALLOWED_MODES,
@@ -124,7 +124,7 @@ class TestParseConfigValue:
 
 class TestLoadConfigFile:
     def test_missing_file_returns_empty(self):
-        result = load_config_file("/nonexistent/path/pymatrix.conf")
+        result = load_config_file("/nonexistent/path/nukamatrix.conf")
         assert result == {}
 
     def test_valid_ini_file(self):

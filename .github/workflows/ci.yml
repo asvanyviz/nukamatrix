@@ -30,11 +30,11 @@ jobs:
 
       - name: Lint with Ruff
         run: |
-          ruff check pymatrix/ tests/
+          ruff check nukamatrix/ tests/
 
       - name: Run tests with pytest
         run: |
-          pytest --cov=pymatrix --cov-report=xml
+          pytest --cov=nukamatrix --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
