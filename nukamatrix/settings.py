@@ -109,78 +109,66 @@ class SettingsMenu:
         h = self.PANEL_H
         ox = (term.width - w) // 2
         oy = (term.height - h) // 2
-        c_border = term.color(_BORDER)
-        c_header = term.color(_HEADER)
-        c_label = term.color(_LABEL)
-        c_arrow = term.color(_ARROW)
-        c_footer = term.color(_FOOTER)
-        c_sel_fg = term.color(_SELECTED_FG)
-        c_sel_bg = term.color(_SELECTED_BG)
-        c_val_bg = term.color(_VALUE_BG)
+        b = term.color(_BORDER)
+        hd = term.color(_HEADER)
+        lb = term.color(_LABEL)
+        ar = term.color(_ARROW)
+        ft = term.color(_FOOTER)
+        sf = term.color(_SELECTED_FG)
+        sb = term.color(_SELECTED_BG)
+        vb = term.color(_VALUE_BG)
+        V = "│"
 
-        # Border chars
-        TL, TR = "┌", "┐"
-        BL, BR = "└", "┘"
-        H, V = "─", "│"
-        MT, MB = "├", "┤"
+        # Build entire panel as a single string — one print() call
+        lines = []
 
-        # Clear panel area
-        for row in range(h):
-            print(term.move_xy(ox, oy + row) + " " * w, end="")
+        # Row 0: top border
+        lines.append(term.move_xy(ox, oy) + b("┌" + "─" * (w - 2) + "┐"))
 
-        # Top border
-        print(term.move_xy(ox, oy) + c_border(TL + H * (w - 2) + TR), end="")
-
-        # Header
+        # Row 1: header
         label = "▸ Settings ◂"
-        padding = w - 2 - len(label)
-        pad_l = padding // 2
-        pad_r = padding - pad_l
-        hdr = c_border(V) + " " * pad_l + c_header(label) + " " * pad_r + c_border(V)
-        print(term.move_xy(ox, oy + 1) + hdr, end="")
+        pad = w - 2 - len(label)
+        pl, pr = pad // 2, pad - pad // 2
+        lines.append(term.move_xy(ox, oy + 1) + b(V) + " " * pl + hd(label) + " " * pr + b(V))
 
-        # Separator
-        print(term.move_xy(ox, oy + 2) + c_border(MT + H * (w - 2) + MB), end="")
+        # Row 2: separator
+        lines.append(term.move_xy(ox, oy + 2) + b("├" + "─" * (w - 2) + "┤"))
 
-        # Settings rows
+        # Rows 3+: settings
         for i, setting in enumerate(ALL_SETTINGS):
             row_y = oy + 3 + i
-            line_label = setting["label"]
-            value_str = self._get_value(i)
-            value_width = 9
-            content_w = w - 6  # minus "│ " and " │"
-            fill = content_w - len(line_label) - 1 - value_width - 2  # arrow + space + label + [ + value + ]
+            vl = setting["label"]
+            vs = self._get_value(i)
+            vw = 9
+            content_w = w - 3  # inner width (minus borders)
 
             if i == self._selected:
-                # Selected: arrow + label + [value]
-                arrow = c_arrow("▸")
-                val_padded = value_str.center(value_width)
-                val_display = c_sel_bg(c_sel_fg(val_padded))
-                fill_sp = " " * max(0, fill)
-                row_text = f" {arrow} {line_label} [{val_display}]{fill_sp}"
-                # Print with highlighted row background
-                row_clear = term.move_xy(ox + 1, row_y) + c_sel_bg(" " * (w - 3))
-                print(row_clear, end="")
-                print(term.move_xy(ox + 1, row_y) + row_text[:w - 3], end="")
-                print(term.move_xy(ox, row_y) + c_border(V), end="")
+                val_d = sb(sf(vs.center(vw)))
+                fill = max(0, content_w - len(vl) - 1 - vw - 2 - 1)  # arrow(1) + space(1) + label + bracket(1) + value + bracket(1)
+                row_inner = f" {ar('▸')} {vl} [{val_d}]{' ' * fill}"[:content_w]
             else:
-                val_bg = c_val_bg(" " + value_str.center(value_width - 2) + " ")
-                fill_sp = " " * max(0, fill)
-                row_text = f"   {c_label(line_label)} {val_bg}{fill_sp}"
-                # Ensure line doesn't overflow
-                row_text = row_text[:content_w]
-                print(term.move_xy(ox, row_y) + c_border(V) + row_text + c_border(V), end="")
+                val_bg = vb(" " + vs.center(vw - 2) + " ")
+                fill = max(0, content_w - len(vl) - 1 - vw - 1)
+                row_inner = f"   {lb(vl)} {val_bg}{' ' * fill}"[:content_w]
 
-        # Separator
+            lines.append(term.move_xy(ox, row_y) + b(V) + row_inner + b(V))
+
+        # Separator after settings
         sep_y = oy + 3 + len(ALL_SETTINGS)
-        print(term.move_xy(ox, sep_y) + c_border(MT + H * (w - 2) + MB), end="")
+        lines.append(term.move_xy(ox, sep_y) + b("├" + "─" * (w - 2) + "┤"))
 
-        # Footer
-        footer1 = c_footer("↑↓ nav  ←→ adj  ")
-        footer2 = c_footer("Enter toggle  q save  ")
+        # Footer line
         f_y = sep_y + 1
-        print(term.move_xy(ox, f_y) + c_border(V) + footer1[:w - 2].ljust(w - 2) + c_border(V), end="")
-        print(term.move_xy(ox, f_y + 1) + c_border(BL + H * (w - 2) + BR), end="")
+        footer_text = ft("↑↓ nav  ←→ adj  ")[:w - 2].ljust(w - 2)
+        lines.append(term.move_xy(ox, f_y) + b(V) + footer_text + b(V))
+
+        # Bottom border
+        lines.append(term.move_xy(ox, f_y + 1) + b("└" + "─" * (w - 2) + "┘"))
+
+        # Clear area + render in one print
+        move_cursor = term.move_xy(ox, oy)
+        clear_block = (" " * w + "\n") * h
+        print(move_cursor + clear_block + "\n".join(lines) + move_cursor, end="")
 
         self._panel_bounds = (ox, oy, ox + w, oy + h)
 
@@ -197,17 +185,13 @@ class SettingsMenu:
         self._render(term, frame)
 
         while True:
-            key = term.inkey(timeout=0.5)
-            if not key:
-                # Re-render for pulse effects even with no input
-                self._render(term, frame)
-                continue
+            # Longer timeout — no need to re-render every 0.5s
+            key = term.inkey(timeout=1.0)
 
             if key.lower() == "q":
                 return (True, "charset" in self._dirty_fields or "lambda_mode" in self._dirty_fields)
 
             if key.code == term.KEY_ESCAPE:
-                # Restore original values
                 for k, v in self._snapshot.items():
                     setattr(self.config, k, v)
                 self._dirty_fields.clear()
