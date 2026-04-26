@@ -10,12 +10,19 @@ from nukamatrix.config import Config
 # ── Color constants (256-color) ─────────────────────────────────
 _BORDER = 252       # light gray
 _HEADER = 135       # purple
-_SELECTED_FG = 15   # white
-_SELECTED_BG = 235  # dark gray
-_LABEL = 245        # gray
-_VALUE_BG = 234     # very dark gray
+_VALUE = 15         # white (always visible on any bg)
+_SELECTED_BG = 235  # dark gray background for selected row
+_LABEL = 188        # light gray
 _ARROW = 255        # white
 _FOOTER = 240       # dim gray
+
+# ── Unicode constants ───────────────────────────────────────────
+_UP = "\u2191"
+_DOWN = "\u2193"
+_LEFT = "\u2190"
+_RIGHT = "\u2192"
+_VBAR = "\u2502"
+_ARROW_CHAR = "\u25b8"
 
 # ── Settings Row Definition ──────────────────────────────────────
 
@@ -31,29 +38,18 @@ ALL_SETTINGS = [
 
 
 class SettingsMenu:
-    """Interactive settings overlay menu.
-
-    Usage:
-        menu = SettingsMenu(config)
-        save, needs_reinit = menu.run(term, frame)
-        # save=True  → user pressed q (save config)
-        # needs_reinit=True → charset/lambda changed → caller must reinit columns
-    """
+    """Interactive settings overlay menu."""
 
     PANEL_W = 36
-    PANEL_H = len(ALL_SETTINGS) + 8  # header + border + footer + spacing
+    PANEL_H = len(ALL_SETTINGS) + 8  # 7 settings + header(2) + sep(2) + footer(1) + bottom(1)
 
     def __init__(self, config: Config):
         self.config = config
-        self._selected = 0  # index into ALL_SETTINGS
-        # Snapshot for discard
+        self._selected = 0
         self._snapshot = {
-            "color": config.color,
-            "rainbow": config.rainbow,
-            "speed": config.speed,
-            "fps": config.fps,
-            "charset": config.charset,
-            "bold": config.bold,
+            "color": config.color, "rainbow": config.rainbow,
+            "speed": config.speed, "fps": config.fps,
+            "charset": config.charset, "bold": config.bold,
             "lambda_mode": config.lambda_mode,
         }
         self._dirty_fields = set()
@@ -65,38 +61,34 @@ class SettingsMenu:
         key = s["key"]
         val = getattr(self.config, key)
         if s["type"] == "toggle":
-            return " ON " if val else " OFF "
+            return "ON" if val else "OFF"
         if s["type"] == "cycle":
-            return f" {val} "
+            return val
         if s["type"] == "range":
-            return f" {val:>3} "
+            return str(val)
         return str(val)
 
     def _cycle_value(self, idx: int, direction: int = 1) -> None:
         s = ALL_SETTINGS[idx]
-        key = s["key"]
         values = s["values"]
-        current_val = getattr(self.config, key)
-        # Defensive: if value isn't in list (bad config file), start from 0
+        current = getattr(self.config, s["key"])
         try:
-            idx_v = values.index(current_val)
+            idx_v = values.index(current)
         except ValueError:
             idx_v = 0
         idx_v = (idx_v + direction) % len(values)
-        setattr(self.config, key, values[idx_v])
-        self._dirty_fields.add(key)
+        setattr(self.config, s["key"], values[idx_v])
+        self._dirty_fields.add(s["key"])
 
     def _toggle_value(self, idx: int) -> None:
-        s = ALL_SETTINGS[idx]
-        key = s["key"]
+        key = ALL_SETTINGS[idx]["key"]
         setattr(self.config, key, not getattr(self.config, key))
         self._dirty_fields.add(key)
 
     def _adjust_range(self, idx: int, delta: int) -> None:
         s = ALL_SETTINGS[idx]
         key = s["key"]
-        val = getattr(self.config, key) + delta
-        val = max(s["min"], min(s["max"], val))
+        val = max(s["min"], min(s["max"], getattr(self.config, key) + delta))
         setattr(self.config, key, val)
         self._dirty_fields.add(key)
 
@@ -107,71 +99,67 @@ class SettingsMenu:
         h = self.PANEL_H
         ox = (term.width - w) // 2
         oy = (term.height - h) // 2
-        b = term.color(_BORDER)
-        hd = term.color(_HEADER)
-        lb = term.color(_LABEL)
-        ar = term.color(_ARROW)
-        ft = term.color(_FOOTER)
+        bdr = term.color(_BORDER)
+        hdr = term.color(_HEADER)
+        lbl = term.color(_LABEL)
+        val = term.color(_VALUE_TEXT)
+        ftr = term.color(_FOOTER)
         sf = term.color(_SELECTED_FG)
-        sb = term.color(_SELECTED_BG)
-        vb = term.color(_VALUE_BG)
-        V = "│"
+        arw = term.color(_ARROW)
+        V = _VBAR
 
-        # Build each line of the panel
         lines = []
 
-        # Line 0: ┌─────┐
-        lines.append(term.move_xy(ox, oy) + b("┌" + "─" * (w - 2) + "┐"))
+        # ── Top border ──
+        top = bdr("\u250c" + "\u2500" * (w - 2) + "\u2510")
+        lines.append(term.move_xy(ox, oy) + top)
 
-        # Line 1: │  ▸ Settings ◂  │
-        label = "▸ Settings ◂"
+        # ── Header ──
+        label = "\u25b8 Settings \u25c2"
         pad = w - 2 - len(label)
         pl, pr = pad // 2, pad - pad // 2
-        lines.append(term.move_xy(ox, oy + 1) + b(V) + " " * pl + hd(label) + " " * pr + b(V))
+        lines.append(term.move_xy(ox, oy + 1) + bdr(V) + " " * pl + hdr(label) + " " * pr + bdr(V))
 
-        # Line 2: ├─────┤
-        lines.append(term.move_xy(ox, oy + 2) + b("├" + "─" * (w - 2) + "┤"))
+        # ── Separator ──
+        lines.append(term.move_xy(ox, oy + 2) + bdr("\u251c" + "\u2500" * (w - 2) + "\u2524"))
 
-        # Lines 3+: settings
+        # ── Settings rows ──
+        inner_w = w - 3  # between vertical bars
         for i, setting in enumerate(ALL_SETTINGS):
             row_y = oy + 3 + i
             vl = setting["label"]
             vs = self._get_value(i)
-            vw = 9
-            content_w = w - 3  # inner width between │ borders
+            vs_w = max(len(vs), 3)  # minimum 3 chars wide
 
             if i == self._selected:
-                val_display = sb(sf(vs.center(vw)))
-                # ▸ Color [  green  ]
-                # prefix: " ▸ " (3) + label + " [" (2) + value (9) + "]" (1)
-                prefix = f" {ar('▸')} {vl} ["
-                suffix = "]"
-                remaining = max(0, content_w - len(prefix) - vw - len(suffix))
-                row_inner = prefix + val_display + suffix + " " * remaining
-                row_inner = row_inner[:content_w]
+                # Selected row: highlighted
+                val_str = sf(f" {vs:^{vs_w+2}} ")
+                # Right-pad spaces to fill
+                raw = f" {arw(_ARROW_CHAR)} {term.bold(vl)} [{val_str}]"
+                # Compute visible width (without escape codes)
+                plain_len = len(f"  {_ARROW_CHAR}  {vl} [ {' '*(vs_w+2)} ]")
+                fill = max(0, inner_w - plain_len)
+                row_inner = raw + " " * fill
             else:
-                val_bg = vb(" " + vs.center(vw - 2) + " ")
-                prefix = f"   {lb(vl)} "
-                remaining = max(0, content_w - len(prefix) - (vw - 2))
-                row_inner = prefix + val_bg + " " * remaining
-                row_inner = row_inner[:content_w]
+                # Normal row
+                val_str = val(f" {vs:^{vs_w+2}} ")
+                row_inner = f"   {lbl(vl)} {val_str} " + " " * max(0, inner_w - (4 + len(vl) + 1 + (vs_w + 2) + 1))
 
-            lines.append(term.move_xy(ox, row_y) + b(V) + row_inner + b(V))
+            row_inner = row_inner[:inner_w]
+            lines.append(term.move_xy(ox, row_y) + bdr(V) + row_inner + bdr(V))
 
-        # Separator
+        # ── Second separator ──
         sep_y = oy + 3 + len(ALL_SETTINGS)
-        lines.append(term.move_xy(ox, sep_y) + b("├" + "─" * (w - 2) + "┤"))
+        lines.append(term.move_xy(ox, sep_y) + bdr("\u251c" + "\u2500" * (w - 2) + "\u2524"))
 
-        # Footer
-        footer_text = ft("\u2191\u2193 nav  \u2190\u2192 adj  ")[:w - 2].ljust(w - 2)
-        f_y = sep_y + 1
-        lines.append(term.move_xy(ox, f_y) + b(V) + footer_text + b(V))
+        # ── Footer ──
+        footer_text = ftr(f"{_UP}{_DOWN} nav  {_LEFT}{_RIGHT} adj  ")[:inner_w].ljust(inner_w)
+        lines.append(term.move_xy(ox, sep_y + 1) + bdr(V) + footer_text + bdr(V))
 
-        # Bottom border
-        lines.append(term.move_xy(ox, f_y + 1) + b("└" + "─" * (w - 2) + "┘"))
+        # ── Bottom border ──
+        lines.append(term.move_xy(ox, sep_y + 2) + bdr("\u2514" + "\u2500" * (w - 2) + "\u2518"))
 
-        # Clear panel area first (each row at correct position), then render
-        # Use single print to avoid I/O overhead
+        # ── Clear area + render in one print ──
         output = []
         for row in range(h):
             output.append(term.move_xy(ox, oy + row) + " " * w)
@@ -186,18 +174,18 @@ class SettingsMenu:
         """Run the settings menu event loop.
 
         Returns:
-            (save, needs_reinit):
-                save=True if user chose to save config
-                needs_reinit=True if charset/lambda changed → columns must be rebuilt
+            (save, needs_reinit): save=True → save config,
+            needs_reinit=True → charset/lambda changed, reinit columns
         """
         self._render(term, frame)
 
         while True:
-            # timeout — no idle re-render
             key = term.inkey(timeout=1.0)
 
             if key.lower() == "q":
-                return (True, "charset" in self._dirty_fields or "lambda_mode" in self._dirty_fields)
+                return (True,
+                        "charset" in self._dirty_fields or
+                        "lambda_mode" in self._dirty_fields)
 
             if key.code == term.KEY_ESCAPE:
                 for k, v in self._snapshot.items():
@@ -222,7 +210,7 @@ class SettingsMenu:
                 self._render(term, frame)
 
     def _action(self, idx: int, delta: int) -> None:
-        """Apply an action (adjust/toggle/cycle) on the selected setting."""
+        """Apply action on selected setting."""
         if idx < 0 or idx >= len(ALL_SETTINGS):
             return
         current = ALL_SETTINGS[idx]
@@ -238,7 +226,7 @@ class SettingsMenu:
     # ── Config Saving ───────────────────────────────────────────
 
     def save_to_file(self) -> None:
-        """Write current config to the default config file (~/.nukamatrix.conf)."""
+        """Write current config to ~/.nukamatrix.conf."""
         cp = ConfigParser()
         cp.add_section("display")
         cp["display"]["mode"] = self.config.mode
@@ -256,4 +244,4 @@ class SettingsMenu:
             with open(config_path, "w") as f:
                 cp.write(f)
         except OSError:
-            pass  # Config not saved — in-memory settings still active
+            pass  # In-memory settings still active
