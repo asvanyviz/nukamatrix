@@ -1,10 +1,21 @@
-"""Runtime settings menu overlay for NukaMatrix."""
+"""Runtime settings menu overlay for NukaMatrix.
 
-from blessed import Terminal
+All colors use term.color(N) which works with any 256-color terminal.
+"""
 
 from configparser import ConfigParser
 
 from nukamatrix.config import Config
+
+# ── Color constants (256-color) ─────────────────────────────────
+_BORDER = 252       # light gray
+_HEADER = 135       # purple
+_SELECTED_FG = 15   # white
+_SELECTED_BG = 235  # dark gray
+_LABEL = 245        # gray
+_VALUE_BG = 234     # very dark gray
+_ARROW = 255        # white
+_FOOTER = 240       # dim gray
 
 # ── Settings Row Definition ──────────────────────────────────────
 
@@ -17,6 +28,13 @@ ALL_SETTINGS = [
     {"key": "bold",         "label": "Bold",        "type": "toggle"},
     {"key": "lambda_mode",  "label": "Lambda mode", "type": "toggle"},
 ]
+
+
+def _color(term, n: int, text: str = "") -> str:
+    """Apply 256-color to text, or return callable."""
+    if text:
+        return term.color(n)(text)
+    return term.color(n)
 
 
 class SettingsMenu:
@@ -53,11 +71,11 @@ class SettingsMenu:
         s = ALL_SETTINGS[idx]
         key = s["key"]
         val = getattr(self.config, key)
-        if s["type"] in ("cycle", "toggle"):
-            if s["type"] == "toggle":
-                return " ON " if val else " OFF "
+        if s["type"] == "toggle":
+            return " ON " if val else " OFF "
+        if s["type"] == "cycle":
             return f" {val} "
-        elif s["type"] == "range":
+        if s["type"] == "range":
             return f" {val:>3} "
         return str(val)
 
@@ -67,15 +85,13 @@ class SettingsMenu:
         values = s["values"]
         idx_v = values.index(getattr(self.config, key))
         idx_v = (idx_v + direction) % len(values)
-        new_val = values[idx_v]
-        setattr(self.config, key, new_val)
+        setattr(self.config, key, values[idx_v])
         self._dirty_fields.add(key)
 
     def _toggle_value(self, idx: int) -> None:
         s = ALL_SETTINGS[idx]
         key = s["key"]
-        val = not getattr(self.config, key)
-        setattr(self.config, key, val)
+        setattr(self.config, key, not getattr(self.config, key))
         self._dirty_fields.add(key)
 
     def _adjust_range(self, idx: int, delta: int) -> None:
@@ -88,80 +104,89 @@ class SettingsMenu:
 
     # ── Render ──────────────────────────────────────────────────
 
-    def _render(self, term: Terminal, frame: int) -> None:
+    def _render(self, term, frame: int) -> None:
         w = self.PANEL_W
         h = self.PANEL_H
         ox = (term.width - w) // 2
         oy = (term.height - h) // 2
+        c_border = term.color(_BORDER)
+        c_header = term.color(_HEADER)
+        c_label = term.color(_LABEL)
+        c_arrow = term.color(_ARROW)
+        c_footer = term.color(_FOOTER)
+        c_sel_fg = term.color(_SELECTED_FG)
+        c_sel_bg = term.color(_SELECTED_BG)
+        c_val_bg = term.color(_VALUE_BG)
 
-        border_c = term.bright_white
-        header_c = term.bright_magenta
-        footer_c = term.dim
-        selected_bg = term.black
-        selected_fg = term.bright_white
+        # Border chars
+        TL, TR = "┌", "┐"
+        BL, BR = "└", "┘"
+        H, V = "─", "│"
+        MT, MB = "├", "┤"
 
         # Clear panel area
         for row in range(h):
             print(term.move_xy(ox, oy + row) + " " * w, end="")
 
         # Top border
-        top = border_c("┌") + border_c("─") * (w - 2) + border_c("┐")
-        print(term.move_xy(ox, oy) + top, end="")
+        print(term.move_xy(ox, oy) + c_border(TL + H * (w - 2) + TR), end="")
 
         # Header
-        label = " Settings "
-        left = (w - 2 - len(label)) // 2
-        right = w - 2 - len(label) - left
-        header = border_c("│") + " " * left + header_c(label) + " " * right + border_c("│")
-        print(term.move_xy(ox, oy + 1) + header, end="")
+        label = "▸ Settings ◂"
+        padding = w - 2 - len(label)
+        pad_l = padding // 2
+        pad_r = padding - pad_l
+        hdr = c_border(V) + " " * pad_l + c_header(label) + " " * pad_r + c_border(V)
+        print(term.move_xy(ox, oy + 1) + hdr, end="")
 
         # Separator
-        sep = border_c("├") + border_c("─") * (w - 2) + border_c("┤")
-        print(term.move_xy(ox, oy + 2) + sep, end="")
+        print(term.move_xy(ox, oy + 2) + c_border(MT + H * (w - 2) + MB), end="")
 
         # Settings rows
         for i, setting in enumerate(ALL_SETTINGS):
             row_y = oy + 3 + i
-            line_label = f"  {setting['label']}"
+            line_label = setting["label"]
             value_str = self._get_value(i)
             value_width = 9
-            fill = w - 6 - len(line_label) - value_width
+            content_w = w - 6  # minus "│ " and " │"
+            fill = content_w - len(line_label) - 1 - value_width - 2  # arrow + space + label + [ + value + ]
+
             if i == self._selected:
-                val_display = selected_bg(selected_fg(value_str.center(value_width)))
-                fill_spaces = ' ' * fill
-                arrow = term.white('▸')
-                lbl = term.bold(header_c(line_label))
-                line = f" {arrow} {lbl} [{val_display}]{fill_spaces}"
+                # Selected: arrow + label + [value]
+                arrow = c_arrow("▸")
+                val_padded = value_str.center(value_width)
+                val_display = c_sel_bg(c_sel_fg(val_padded))
+                fill_sp = " " * max(0, fill)
+                row_text = f" {arrow} {line_label} [{val_display}]{fill_sp}"
+                # Print with highlighted row background
+                row_clear = term.move_xy(ox + 1, row_y) + c_sel_bg(" " * (w - 3))
+                print(row_clear, end="")
+                print(term.move_xy(ox + 1, row_y) + row_text[:w - 3], end="")
+                print(term.move_xy(ox, row_y) + c_border(V), end="")
             else:
-                val_bg = footer_c(' ' + term.color(234)(value_str.center(value_width)) + ' ')
-                fill_spaces = ' ' * fill
-                lbl_dim = term.color(245)(line_label)
-                line = f"   {lbl_dim} {val_bg}{fill_spaces}"
-            # Ensure line doesn't overflow
-            line = line[:w - 2]
-            print(term.move_xy(ox, row_y) + border_c("│") + line + border_c("│"), end="")
+                val_bg = c_val_bg(" " + value_str.center(value_width - 2) + " ")
+                fill_sp = " " * max(0, fill)
+                row_text = f"   {c_label(line_label)} {val_bg}{fill_sp}"
+                # Ensure line doesn't overflow
+                row_text = row_text[:content_w]
+                print(term.move_xy(ox, row_y) + c_border(V) + row_text + c_border(V), end="")
 
         # Separator
-        sep2 = border_c("├") + border_c("─") * (w - 2) + border_c("┤")
-        print(term.move_xy(ox, oy + 3 + len(ALL_SETTINGS)) + sep2, end="")
+        sep_y = oy + 3 + len(ALL_SETTINGS)
+        print(term.move_xy(ox, sep_y) + c_border(MT + H * (w - 2) + MB), end="")
 
         # Footer
-        footer1 = border_c("│") + f"  ↑↓ nav  ←→ adj  ".ljust(w - 2) + border_c("│")
-        footer2 = border_c("│") + f"  Enter toggle  q save".ljust(w - 2) + border_c("│")
+        footer1 = c_footer("↑↓ nav  ←→ adj  ")
+        footer2 = c_footer("Enter toggle  q save  ")
+        f_y = sep_y + 1
+        print(term.move_xy(ox, f_y) + c_border(V) + footer1[:w - 2].ljust(w - 2) + c_border(V), end="")
+        print(term.move_xy(ox, f_y + 1) + c_border(BL + H * (w - 2) + BR), end="")
 
-        # Bottom border
-        bot = border_c("└") + border_c("─") * (w - 2) + border_c("┘")
-        bot_y = oy + 3 + len(ALL_SETTINGS) + 2
-        print(term.move_xy(ox, bot_y - 2) + footer_c(footer1), end="")
-        print(term.move_xy(ox, bot_y - 1) + footer_c(footer2), end="")
-        print(term.move_xy(ox, bot_y) + bot, end="")
-
-        # Store computed panel bounds for cursor hiding
         self._panel_bounds = (ox, oy, ox + w, oy + h)
 
     # ── Input / Loop ────────────────────────────────────────────
 
-    def run(self, term: Terminal, frame: int) -> tuple[bool, bool]:
+    def run(self, term, frame: int) -> tuple:
         """Run the settings menu event loop.
 
         Returns:
@@ -188,53 +213,35 @@ class SettingsMenu:
                 self._dirty_fields.clear()
                 return (False, False)
 
-            if self._selected == 0:  # Color — ↑↓ cycles through colors
-                if key.code == term.KEY_DOWN:
-                    self._selected = (self._selected + 1) % len(ALL_SETTINGS)
-                    self._render(term, frame)
-                elif key.code == term.KEY_UP:
-                    self._selected = (self._selected - 1) % len(ALL_SETTINGS)
-                    self._render(term, frame)
-                elif key.code in (term.KEY_LEFT,):
-                    self._cycle_value(self._selected, direction=-1)
-                    self._render(term, frame)
-                elif key.code in (term.KEY_RIGHT,):
-                    self._cycle_value(self._selected, direction=1)
-                    self._render(term, frame)
-                elif key.code == term.KEY_ENTER:
-                    # Also accept Enter for cycling in cycle type
-                    self._cycle_value(self._selected, direction=1)
-                    self._render(term, frame)
-            else:
-                current = ALL_SETTINGS[self._selected]
-                if key.code == term.KEY_DOWN:
-                    self._selected = (self._selected + 1) % len(ALL_SETTINGS)
-                    self._render(term, frame)
-                elif key.code == term.KEY_UP:
-                    self._selected = (self._selected - 1) % len(ALL_SETTINGS)
-                    self._render(term, frame)
-                elif key.code == term.KEY_LEFT:
-                    if current["type"] == "cycle":
-                        self._cycle_value(self._selected, direction=-1)
-                    elif current["type"] == "range":
-                        self._adjust_range(self._selected, delta=-current.get("step", 1))
-                    elif current["type"] == "toggle":
-                        self._toggle_value(self._selected)
-                    self._render(term, frame)
-                elif key.code == term.KEY_RIGHT:
-                    if current["type"] == "cycle":
-                        self._cycle_value(self._selected, direction=1)
-                    elif current["type"] == "range":
-                        self._adjust_range(self._selected, delta=current.get("step", 1))
-                    elif current["type"] == "toggle":
-                        self._toggle_value(self._selected)
-                    self._render(term, frame)
-                elif key.code == term.KEY_ENTER:
-                    if current["type"] == "toggle":
-                        self._toggle_value(self._selected)
-                    elif current["type"] == "cycle":
-                        self._cycle_value(self._selected, direction=1)
-                    self._render(term, frame)
+            if key.code == term.KEY_DOWN:
+                self._selected = (self._selected + 1) % len(ALL_SETTINGS)
+                self._render(term, frame)
+            elif key.code == term.KEY_UP:
+                self._selected = (self._selected - 1) % len(ALL_SETTINGS)
+                self._render(term, frame)
+            elif key.code == term.KEY_LEFT:
+                self._action(self._selected, delta=-1)
+                self._render(term, frame)
+            elif key.code == term.KEY_RIGHT:
+                self._action(self._selected, delta=1)
+                self._render(term, frame)
+            elif key.code == term.KEY_ENTER:
+                self._action(self._selected, delta=1)
+                self._render(term, frame)
+
+    def _action(self, idx: int, delta: int) -> None:
+        """Apply an action (adjust/toggle/cycle) on the selected setting."""
+        if idx < 0 or idx >= len(ALL_SETTINGS):
+            return
+        current = ALL_SETTINGS[idx]
+        t = current["type"]
+        if t == "cycle":
+            self._cycle_value(idx, direction=delta)
+        elif t == "range":
+            step = max(1, current.get("step", 1))
+            self._adjust_range(idx, delta=delta * step)
+        elif t == "toggle":
+            self._toggle_value(idx)
 
     # ── Config Saving ───────────────────────────────────────────
 
@@ -253,6 +260,5 @@ class SettingsMenu:
 
         import os
         config_path = os.path.expanduser("~/.nukamatrix.conf")
-        # Write to flat file in home — no makedirs needed for ~/.file
         with open(config_path, "w") as f:
             cp.write(f)
