@@ -52,7 +52,7 @@ COLOR_MAP = {
 # ── Defaults ────────────────────────────────────────────────────
 
 DEFAULT_FPS = 30
-DEFAULT_SPEED = 4  # 0-10, maps to update frequency
+DEFAULT_SPEED = 2  # 0-10, maps to update frequency
 DEFAULT_COLOR = "green"
 DEFAULT_CHARSET = "mixed"
 DEFAULT_BOLD = True
