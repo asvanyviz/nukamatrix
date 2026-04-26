@@ -1,0 +1,44 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Distribution
+/build
+/dist
+*.egg-info
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local config
+.pymatrix.conf
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# MyPy
+.mypy_cache/
+
+# Demos / test output
+*.gif
+*.mp4
+frames_*/
+

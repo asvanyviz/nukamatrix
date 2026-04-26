@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymatrix"
+version = "0.1.0"
+description = "Matrix Rain screensaver for the terminal — inspired by cmatrix, reimagined in Python"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "asvanyviz", email = "asvanyviz@users.noreply.github.com"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Desktop Environment :: Screen Savers",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "blessed>=1.20",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/asvanyviz/pymatrix"
+Repository = "https://github.com/asvanyviz/pymatrix"
+Issues = "https://github.com/asvanyviz/pymatrix/issues"
+
+[project.scripts]
+pymatrix = "pymatrix.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["pymatrix*"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v --tb=short"
