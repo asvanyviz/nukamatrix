@@ -177,13 +177,22 @@ class MultiModeEngine:
         self._init_signal()
         self._init_layout()
 
-        frame_interval = 1.0 / self.config.fps
-
         with self.term.fullscreen(), self.term.cbreak(), self.term.hidden_cursor():
             print(self.term.clear, end="")
 
             while self._running:
                 frame_start = time.monotonic()
+
+                # Re-read FPS from config each frame (settings can change it)
+                fps = max(1, self.config.fps)
+                frame_interval = 1.0 / fps
+
+                # Detect config changes that affect column intervals
+                if hasattr(self, '_last_speed') and self._last_speed != self.config.speed:
+                    # Speed changed — update all column intervals
+                    for col in self._columns:
+                        col.update_interval = max(1, speed_to_interval(self.config.speed))
+                self._last_speed = self.config.speed
 
                 # Handle resize
                 if self._resize_pending:
@@ -197,6 +206,7 @@ class MultiModeEngine:
 
                 # 1. Update sysinfo (if panels active)
                 if self._mode != DisplayMode.PURE_MATRIX and self._sysinfo:
+                    self._set_panel_colors()
                     self._sysinfo.update()
 
                 # 2. Update matrix columns
@@ -325,6 +335,10 @@ class MultiModeEngine:
                 self._columns = []
                 self._grid = []
                 self._init_layout()
+
+            # FPS changed -> will be picked up on next frame loop
+            # Speed changed -> will be picked up on next frame loop
+            # Color/rainbow/bold changed -> renderer reads live from config
         except Exception as e:
             # Log error to terminal and resume
             with self.term.location(0, 0):

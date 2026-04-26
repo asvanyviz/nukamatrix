@@ -28,45 +28,50 @@ class Renderer:
 
     # ── Color helpers ───────────────────────────────────────────
 
+    # Map config.color names to 256-color (bright, normal, dark, dimmest)
+    _COLOR_MAP = {
+        "green":    (10,  2,  22,  232),
+        "red":      (9,  1, 52,   232),
+        "blue":     (12, 4,  26,  232),
+        "cyan":     (14, 6,  30,  232),
+        "magenta":  (13, 5,  53,  232),
+        "yellow":   (11, 3, 136,  232),
+        "white":    (15, 7, 250,  234),
+    }
+
     def _trail_color(self, age: int, max_age: int = 15):
-        """Return a color attribute for a trail character based on its age.
-
-        Age 0 = freshly written (bright), higher = dimmer → fades to nothing.
-        Returns a bounded callable that can wrap a character string.
-        """
+        """Return a color attribute for a trail character based on its age."""
         normalized = min(age / max_age, 1.0)
+        color_name = getattr(self.config, "color", "green")
+        palette = self._COLOR_MAP.get(color_name, self._COLOR_MAP["green"])
 
-        # 4-tier fade: bright → normal → dark → dimmest
+        if normalized < 0.05:
+            return self.term.normal
         if normalized < 0.25:
-            attr = self.term.bright_green
-        elif normalized < 0.5:
-            attr = self.term.green
-        elif normalized < 0.75:
-            attr = self.term.color(22)  # dark green from 256-color palette
-        else:
-            # Very old trail — near-invisible
-            attr = self.term.color(232)
-
-        return attr
+            return self.term.color(palette[0])  # bright
+        if normalized < 0.5:
+            return self.term.color(palette[1])  # normal
+        if normalized < 0.75:
+            return self.term.color(palette[2])  # dark
+        return self.term.normal  # near-invisible
 
     def _head_color(self):
-        """Head is always white (bold/bright)."""
+        """Head is always white (bold/bright) for contrast."""
         if self.config.rainbow:
             return self._rainbow_attr(0)
         if self.config.bold:
-            # Return a callable that wraps text: bold(bright_white(text))
-            return lambda ch: self.term.bold(self.term.bright_white(ch))
-        return self.term.bright_white
+            return lambda ch: self.term.bold(self.term.color(15)(ch))
+        return lambda ch: self.term.color(15)(ch)
 
     def _rainbow_attr(self, offset: int = 0):
         """Rainbow color cycling based on frame and position offset."""
         colors = [
-            self.term.red,
-            self.term.yellow,
-            self.term.bright_green,
-            self.term.cyan,
-            self.term.blue,
-            self.term.magenta,
+            lambda ch: self.term.color(9)(ch),
+            lambda ch: self.term.color(3)(ch),
+            lambda ch: self.term.color(10)(ch),
+            lambda ch: self.term.color(6)(ch),
+            lambda ch: self.term.color(4)(ch),
+            lambda ch: self.term.color(5)(ch),
         ]
         idx = (self._frame + offset) % len(colors)
         return colors[idx]

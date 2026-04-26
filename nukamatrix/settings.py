@@ -1,30 +1,7 @@
-"""Runtime settings menu overlay for NukaMatrix.
-
-All colors use term.color(N) which works with any 256-color terminal.
-"""
-
+"""Runtime settings menu overlay for NukaMatrix."""
 from configparser import ConfigParser
 
 from nukamatrix.config import Config
-
-# ── Color constants (256-color) ─────────────────────────────────
-_BORDER = 252       # light gray
-_HEADER = 135       # purple
-_VALUE_TEXT = 15    # white (always visible on any bg)
-_SELECTED_FG = 15   # white for selected row text
-_LABEL = 188        # light gray
-_ARROW = 255        # white
-_FOOTER = 240       # dim gray
-
-# ── Unicode constants ───────────────────────────────────────────
-_UP = "\u2191"
-_DOWN = "\u2193"
-_LEFT = "\u2190"
-_RIGHT = "\u2192"
-_VBAR = "\u2502"
-_ARROW_CHAR = "\u25b8"
-
-# ── Settings Row Definition ──────────────────────────────────────
 
 ALL_SETTINGS = [
     {"key": "color",        "label": "Color",       "type": "cycle", "values": ["green", "red", "blue", "cyan", "magenta", "yellow", "white"]},
@@ -41,7 +18,8 @@ class SettingsMenu:
     """Interactive settings overlay menu."""
 
     PANEL_W = 36
-    PANEL_H = len(ALL_SETTINGS) + 8  # 7 settings + header(2) + sep(2) + footer(1) + bottom(1)
+    PANEL_H = len(ALL_SETTINGS) + 6  # 13
+    VAL_W = 9
 
     def __init__(self, config: Config):
         self.config = config
@@ -54,31 +32,24 @@ class SettingsMenu:
         }
         self._dirty_fields = set()
 
-    # ── Value Helpers ───────────────────────────────────────────
-
     def _get_value(self, idx: int) -> str:
         s = ALL_SETTINGS[idx]
-        key = s["key"]
-        val = getattr(self.config, key)
+        val = getattr(self.config, s["key"])
         if s["type"] == "toggle":
             return "ON" if val else "OFF"
-        if s["type"] == "cycle":
-            return val
-        if s["type"] == "range":
-            return str(val)
         return str(val)
 
     def _cycle_value(self, idx: int, direction: int = 1) -> None:
-        s = ALL_SETTINGS[idx]
-        values = s["values"]
-        current = getattr(self.config, s["key"])
+        values = ALL_SETTINGS[idx]["values"]
+        key = ALL_SETTINGS[idx]["key"]
+        current = getattr(self.config, key)
         try:
             idx_v = values.index(current)
         except ValueError:
             idx_v = 0
         idx_v = (idx_v + direction) % len(values)
-        setattr(self.config, s["key"], values[idx_v])
-        self._dirty_fields.add(s["key"])
+        setattr(self.config, key, values[idx_v])
+        self._dirty_fields.add(key)
 
     def _toggle_value(self, idx: int) -> None:
         key = ALL_SETTINGS[idx]["key"]
@@ -92,156 +63,113 @@ class SettingsMenu:
         setattr(self.config, key, val)
         self._dirty_fields.add(key)
 
-    # ── Render ──────────────────────────────────────────────────
-
     def _render(self, term, frame: int) -> None:
         w = self.PANEL_W
         h = self.PANEL_H
         ox = (term.width - w) // 2
         oy = (term.height - h) // 2
-        bdr = term.color(_BORDER)
-        hdr = term.color(_HEADER)
-        lbl = term.color(_LABEL)
-        val = term.color(_VALUE_TEXT)
-        ftr = term.color(_FOOTER)
-        sf = term.color(_SELECTED_FG)
-        arw = term.color(_ARROW)
-        V = _VBAR
+        iw = w - 2  # inner width between ││ borders
+
+        bdr = term.color(252)
+        hdr = term.color(135)
+        ftr = term.color(240)
+        VT, HL = "\u2502", "\u2500"
+        hline = HL * iw
 
         lines = []
+        move = term.move_xy
 
-        # ── Top border ──
-        top = bdr("\u250c" + "\u2500" * (w - 2) + "\u2510")
-        lines.append(term.move_xy(ox, oy) + top)
+        # Row 0: ┌────────┐
+        lines.append(move(ox, oy) + bdr("\u250c" + hline + "\u2510"))
 
-        # ── Header ──
-        label = "\u25b8 Settings \u25c2"
-        pad = w - 2 - len(label)
-        pl, pr = pad // 2, pad - pad // 2
-        lines.append(term.move_xy(ox, oy + 1) + bdr(V) + " " * pl + hdr(label) + " " * pr + bdr(V))
+        # Row 1: │ Header │
+        t = "\u25b8 Settings \u25c2"
+        p = iw - len(t)
+        pl, pr = p // 2, p - p // 2
+        lines.append(move(ox, oy + 1) + bdr(VT) + " " * pl + hdr(t) + " " * pr + bdr(VT))
 
-        # ── Separator ──
-        lines.append(term.move_xy(ox, oy + 2) + bdr("\u251c" + "\u2500" * (w - 2) + "\u2524"))
+        # Row 2: ├────────┤
+        lines.append(move(ox, oy + 2) + bdr("\u251c" + hline + "\u2524"))
 
-        # ── Settings rows ──
-        inner_w = w - 3  # between vertical bars
-        for i, setting in enumerate(ALL_SETTINGS):
-            row_y = oy + 3 + i
-            vl = setting["label"]
-            vs = self._get_value(i)
-            vs_w = max(len(vs), 3)  # minimum 3 chars wide
+        # Rows 3-9: settings
+        for i, s in enumerate(ALL_SETTINGS):
+            val = self._get_value(i)
+            vp = f"{val:^{self.VAL_W}}"
 
             if i == self._selected:
-                # Selected row: highlighted
-                val_str = sf(f" {vs:^{vs_w+2}} ")
-                # Right-pad spaces to fill
-                raw = f" {arw(_ARROW_CHAR)} {term.bold(vl)} [{val_str}]"
-                # Compute visible width (without escape codes)
-                plain_len = len(f"  {_ARROW_CHAR}  {vl} [ {' '*(vs_w+2)} ]")
-                fill = max(0, inner_w - plain_len)
-                row_inner = raw + " " * fill
+                t = f" \u25b8 {s['label']} [{vp}]"
+                sel = term.bold(term.color(255)(t))
+                fill = max(0, iw - len(t))
+                content = sel + " " * fill
             else:
-                # Normal row
-                val_str = val(f" {vs:^{vs_w+2}} ")
-                row_inner = f"   {lbl(vl)} {val_str} " + " " * max(0, inner_w - (4 + len(vl) + 1 + (vs_w + 2) + 1))
+                t = f"   {s['label']}  {vp}"
+                fill = max(0, iw - len(t))
+                content = t + " " * fill
 
-            row_inner = row_inner[:inner_w]
-            lines.append(term.move_xy(ox, row_y) + bdr(V) + row_inner + bdr(V))
+            lines.append(move(ox, oy + 3 + i) + bdr(VT) + content + bdr(VT))
 
-        # ── Second separator ──
+        # Row 10: ├────────┤
         sep_y = oy + 3 + len(ALL_SETTINGS)
-        lines.append(term.move_xy(ox, sep_y) + bdr("\u251c" + "\u2500" * (w - 2) + "\u2524"))
+        lines.append(move(ox, sep_y) + bdr("\u251c" + hline + "\u2524"))
 
-        # ── Footer ──
-        footer_text = ftr(f"{_UP}{_DOWN} nav  {_LEFT}{_RIGHT} adj  ")[:inner_w].ljust(inner_w)
-        lines.append(term.move_xy(ox, sep_y + 1) + bdr(V) + footer_text + bdr(V))
+        # Row 11: footer
+        ft = "\u2191\u2193 nav  \u2190\u2192 adj"
+        content = ftr(ft) + " " * max(0, iw - len(ft))
+        lines.append(move(ox, sep_y + 1) + bdr(VT) + content + bdr(VT))
 
-        # ── Bottom border ──
-        lines.append(term.move_xy(ox, sep_y + 2) + bdr("\u2514" + "\u2500" * (w - 2) + "\u2518"))
+        # Row 12: └────────┘
+        lines.append(move(ox, sep_y + 2) + bdr("\u2514" + hline + "\u2518"))
 
-        # ── Clear area + render in one print ──
-        output = []
-        for row in range(h):
-            output.append(term.move_xy(ox, oy + row) + " " * w)
-        output.extend(lines)
-        print("\n".join(output), end="")
+        # All in one print via \r\n join
+        print("\r".join(lines), end="")
 
         self._panel_bounds = (ox, oy, ox + w, oy + h)
 
-    # ── Input / Loop ────────────────────────────────────────────
-
     def run(self, term, frame: int) -> tuple:
-        """Run the settings menu event loop.
-
-        Returns:
-            (save, needs_reinit): save=True → save config,
-            needs_reinit=True → charset/lambda changed, reinit columns
-        """
         self._render(term, frame)
-
         while True:
             key = term.inkey(timeout=1.0)
-
             if key.lower() == "q":
-                return (True,
-                        "charset" in self._dirty_fields or
-                        "lambda_mode" in self._dirty_fields)
-
+                return (True, "charset" in self._dirty_fields or "lambda_mode" in self._dirty_fields)
             if key.code == term.KEY_ESCAPE:
                 for k, v in self._snapshot.items():
                     setattr(self.config, k, v)
                 self._dirty_fields.clear()
                 return (False, False)
-
-            if key.code == term.KEY_DOWN:
-                self._selected = (self._selected + 1) % len(ALL_SETTINGS)
-                self._render(term, frame)
-            elif key.code == term.KEY_UP:
-                self._selected = (self._selected - 1) % len(ALL_SETTINGS)
-                self._render(term, frame)
-            elif key.code == term.KEY_LEFT:
-                self._action(self._selected, delta=-1)
-                self._render(term, frame)
-            elif key.code == term.KEY_RIGHT:
-                self._action(self._selected, delta=1)
-                self._render(term, frame)
-            elif key.code == term.KEY_ENTER:
-                self._action(self._selected, delta=1)
+            actions = {
+                term.KEY_DOWN:  (1,  0),
+                term.KEY_UP:    (-1, 0),
+                term.KEY_LEFT:  (0,  -1),
+                term.KEY_RIGHT: (0,  1),
+                term.KEY_ENTER: (0,  1),
+            }
+            if key.code in actions:
+                ds, da = actions[key.code]
+                if ds != 0:
+                    self._selected = (self._selected + ds) % len(ALL_SETTINGS)
+                if da != 0:
+                    self._action(self._selected, delta=da)
                 self._render(term, frame)
 
     def _action(self, idx: int, delta: int) -> None:
-        """Apply action on selected setting."""
         if idx < 0 or idx >= len(ALL_SETTINGS):
             return
-        current = ALL_SETTINGS[idx]
-        t = current["type"]
-        if t == "cycle":
+        s = ALL_SETTINGS[idx]
+        if s["type"] == "cycle":
             self._cycle_value(idx, direction=delta)
-        elif t == "range":
-            step = max(1, current.get("step", 1))
-            self._adjust_range(idx, delta=delta * step)
-        elif t == "toggle":
+        elif s["type"] == "range":
+            self._adjust_range(idx, delta * max(1, s.get("step", 1)))
+        elif s["type"] == "toggle":
             self._toggle_value(idx)
 
-    # ── Config Saving ───────────────────────────────────────────
-
     def save_to_file(self) -> None:
-        """Write current config to ~/.nukamatrix.conf."""
         cp = ConfigParser()
         cp.add_section("display")
-        cp["display"]["mode"] = self.config.mode
-        cp["display"]["color"] = self.config.color
-        cp["display"]["charset"] = self.config.charset
-        cp["display"]["speed"] = str(self.config.speed)
-        cp["display"]["fps"] = str(self.config.fps)
-        cp["display"]["bold"] = str(self.config.bold).lower()
-        cp["display"]["rainbow"] = str(self.config.rainbow).lower()
-        cp["display"]["lambda_mode"] = str(self.config.lambda_mode).lower()
-
+        for key in ["mode", "color", "charset", "speed", "fps", "bold", "rainbow", "lambda_mode"]:
+            cp["display"][key] = str(getattr(self.config, key)).lower()
         import os
-        config_path = os.path.expanduser("~/.nukamatrix.conf")
         try:
-            with open(config_path, "w") as f:
+            with open(os.path.expanduser("~/.nukamatrix.conf"), "w") as f:
                 cp.write(f)
         except OSError:
-            pass  # In-memory settings still active
+            pass
