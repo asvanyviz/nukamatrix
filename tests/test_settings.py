@@ -24,13 +24,13 @@ check("default lambda_mode", c.lambda_mode is False)
 
 print("\n=== Test 2: Value getters ===")
 sm = SettingsMenu(c)
-check("color value", sm._get_value(0) == " green ")
-check("rainbow value", sm._get_value(1) == " OFF ")
-check("speed value", "  2" in sm._get_value(2))
-check("fps value", " 30" in sm._get_value(3))
-check("charset value", sm._get_value(4) == " mixed ")
-check("bold value", sm._get_value(5) == " ON ")
-check("lambda value", sm._get_value(6) == " OFF ")
+check("color value", sm._get_value(0) == "green")
+check("rainbow value", sm._get_value(1) == "OFF")
+check("speed value", sm._get_value(2) == "2")
+check("fps value", sm._get_value(3) == "30")
+check("charset value", sm._get_value(4) == "mixed")
+check("bold value", sm._get_value(5) == "ON")
+check("lambda value", sm._get_value(6) == "OFF")
 
 print("\n=== Test 3: Color cycling ===")
 for direction in [1, -1]:
@@ -153,6 +153,25 @@ try:
     check("invalid color cycles OK", True)
 except Exception as e:
     check("invalid color cycles OK", False, str(e))
+
+print("\n=== Test 13: Cycle direction ===")
+c14 = Config()
+sm14 = SettingsMenu(c14)
+# Forward: green → red
+sm14._cycle_value(0, 1)
+check("color forward: green→red", c14.color == "red")
+# Backward: green → white
+c15 = Config()
+sm15 = SettingsMenu(c15)
+sm15._cycle_value(0, -1)
+check("color backward: green→white", c15.color == "white")
+# Speed range forward/backward
+c16 = Config()
+sm16 = SettingsMenu(c16)
+sm16._adjust_range(2, 1)
+check("speed up: 2→3", c16.speed == 3)
+sm16._adjust_range(2, -1)
+check("speed down: 3→2", c16.speed == 2)
 
 print("\n" + "="*50)
 if errors:

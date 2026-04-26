@@ -10,8 +10,8 @@ from nukamatrix.config import Config
 # ── Color constants (256-color) ─────────────────────────────────
 _BORDER = 252       # light gray
 _HEADER = 135       # purple
-_VALUE = 15         # white (always visible on any bg)
-_SELECTED_BG = 235  # dark gray background for selected row
+_VALUE_TEXT = 15    # white (always visible on any bg)
+_SELECTED_FG = 15   # white for selected row text
 _LABEL = 188        # light gray
 _ARROW = 255        # white
 _FOOTER = 240       # dim gray

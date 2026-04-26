@@ -66,7 +66,7 @@ class TestConfig:
     def test_defaults(self):
         c = Config()
         assert c.fps == 30
-        assert c.speed == 4
+        assert c.speed == 2
         assert c.color == "green"
         assert c.charset == "mixed"
         assert c.bold is True
