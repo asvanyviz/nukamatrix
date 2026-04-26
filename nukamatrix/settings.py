@@ -30,13 +30,6 @@ ALL_SETTINGS = [
 ]
 
 
-def _color(term, n: int, text: str = "") -> str:
-    """Apply 256-color to text, or return callable."""
-    if text:
-        return term.color(n)(text)
-    return term.color(n)
-
-
 class SettingsMenu:
     """Interactive settings overlay menu.
 
@@ -47,7 +40,7 @@ class SettingsMenu:
         # needs_reinit=True → charset/lambda changed → caller must reinit columns
     """
 
-    PANEL_W = 34
+    PANEL_W = 36
     PANEL_H = len(ALL_SETTINGS) + 8  # header + border + footer + spacing
 
     def __init__(self, config: Config):
@@ -83,7 +76,12 @@ class SettingsMenu:
         s = ALL_SETTINGS[idx]
         key = s["key"]
         values = s["values"]
-        idx_v = values.index(getattr(self.config, key))
+        current_val = getattr(self.config, key)
+        # Defensive: if value isn't in list (bad config file), start from 0
+        try:
+            idx_v = values.index(current_val)
+        except ValueError:
+            idx_v = 0
         idx_v = (idx_v + direction) % len(values)
         setattr(self.config, key, values[idx_v])
         self._dirty_fields.add(key)
@@ -119,56 +117,66 @@ class SettingsMenu:
         vb = term.color(_VALUE_BG)
         V = "│"
 
-        # Build entire panel as a single string — one print() call
+        # Build each line of the panel
         lines = []
 
-        # Row 0: top border
+        # Line 0: ┌─────┐
         lines.append(term.move_xy(ox, oy) + b("┌" + "─" * (w - 2) + "┐"))
 
-        # Row 1: header
+        # Line 1: │  ▸ Settings ◂  │
         label = "▸ Settings ◂"
         pad = w - 2 - len(label)
         pl, pr = pad // 2, pad - pad // 2
         lines.append(term.move_xy(ox, oy + 1) + b(V) + " " * pl + hd(label) + " " * pr + b(V))
 
-        # Row 2: separator
+        # Line 2: ├─────┤
         lines.append(term.move_xy(ox, oy + 2) + b("├" + "─" * (w - 2) + "┤"))
 
-        # Rows 3+: settings
+        # Lines 3+: settings
         for i, setting in enumerate(ALL_SETTINGS):
             row_y = oy + 3 + i
             vl = setting["label"]
             vs = self._get_value(i)
             vw = 9
-            content_w = w - 3  # inner width (minus borders)
+            content_w = w - 3  # inner width between │ borders
 
             if i == self._selected:
-                val_d = sb(sf(vs.center(vw)))
-                fill = max(0, content_w - len(vl) - 1 - vw - 2 - 1)  # arrow(1) + space(1) + label + bracket(1) + value + bracket(1)
-                row_inner = f" {ar('▸')} {vl} [{val_d}]{' ' * fill}"[:content_w]
+                val_display = sb(sf(vs.center(vw)))
+                # ▸ Color [  green  ]
+                # prefix: " ▸ " (3) + label + " [" (2) + value (9) + "]" (1)
+                prefix = f" {ar('▸')} {vl} ["
+                suffix = "]"
+                remaining = max(0, content_w - len(prefix) - vw - len(suffix))
+                row_inner = prefix + val_display + suffix + " " * remaining
+                row_inner = row_inner[:content_w]
             else:
                 val_bg = vb(" " + vs.center(vw - 2) + " ")
-                fill = max(0, content_w - len(vl) - 1 - vw - 1)
-                row_inner = f"   {lb(vl)} {val_bg}{' ' * fill}"[:content_w]
+                prefix = f"   {lb(vl)} "
+                remaining = max(0, content_w - len(prefix) - (vw - 2))
+                row_inner = prefix + val_bg + " " * remaining
+                row_inner = row_inner[:content_w]
 
             lines.append(term.move_xy(ox, row_y) + b(V) + row_inner + b(V))
 
-        # Separator after settings
+        # Separator
         sep_y = oy + 3 + len(ALL_SETTINGS)
         lines.append(term.move_xy(ox, sep_y) + b("├" + "─" * (w - 2) + "┤"))
 
-        # Footer line
+        # Footer
+        footer_text = ft("\u2191\u2193 nav  \u2190\u2192 adj  ")[:w - 2].ljust(w - 2)
         f_y = sep_y + 1
-        footer_text = ft("↑↓ nav  ←→ adj  ")[:w - 2].ljust(w - 2)
         lines.append(term.move_xy(ox, f_y) + b(V) + footer_text + b(V))
 
         # Bottom border
         lines.append(term.move_xy(ox, f_y + 1) + b("└" + "─" * (w - 2) + "┘"))
 
-        # Clear area + render in one print
-        move_cursor = term.move_xy(ox, oy)
-        clear_block = (" " * w + "\n") * h
-        print(move_cursor + clear_block + "\n".join(lines) + move_cursor, end="")
+        # Clear panel area first (each row at correct position), then render
+        # Use single print to avoid I/O overhead
+        output = []
+        for row in range(h):
+            output.append(term.move_xy(ox, oy + row) + " " * w)
+        output.extend(lines)
+        print("\n".join(output), end="")
 
         self._panel_bounds = (ox, oy, ox + w, oy + h)
 
@@ -185,7 +193,7 @@ class SettingsMenu:
         self._render(term, frame)
 
         while True:
-            # Longer timeout — no need to re-render every 0.5s
+            # timeout — no idle re-render
             key = term.inkey(timeout=1.0)
 
             if key.lower() == "q":
@@ -244,5 +252,8 @@ class SettingsMenu:
 
         import os
         config_path = os.path.expanduser("~/.nukamatrix.conf")
-        with open(config_path, "w") as f:
-            cp.write(f)
+        try:
+            with open(config_path, "w") as f:
+                cp.write(f)
+        except OSError:
+            pass  # Config not saved — in-memory settings still active
