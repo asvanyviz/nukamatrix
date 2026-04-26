@@ -68,7 +68,7 @@ class SettingsMenu:
         h = self.PANEL_H
         ox = (term.width - w) // 2
         oy = (term.height - h) // 2
-        iw = w - 2  # inner width between ││ borders
+        iw = w - 2  # inner width between borders
 
         bdr = term.color(252)
         hdr = term.color(135)
@@ -79,26 +79,22 @@ class SettingsMenu:
         lines = []
         move = term.move_xy
 
-        # Row 0: ┌────────┐
         lines.append(move(ox, oy) + bdr("\u250c" + hline + "\u2510"))
 
-        # Row 1: │ Header │
         t = "\u25b8 Settings \u25c2"
         p = iw - len(t)
         pl, pr = p // 2, p - p // 2
         lines.append(move(ox, oy + 1) + bdr(VT) + " " * pl + hdr(t) + " " * pr + bdr(VT))
 
-        # Row 2: ├────────┤
         lines.append(move(ox, oy + 2) + bdr("\u251c" + hline + "\u2524"))
 
-        # Rows 3-9: settings
         for i, s in enumerate(ALL_SETTINGS):
             val = self._get_value(i)
             vp = f"{val:^{self.VAL_W}}"
 
             if i == self._selected:
                 t = f" \u25b8 {s['label']} [{vp}]"
-                sel = term.bold(term.color(255)(t))
+                sel = term.bold(term.normal(term.color(15)(t)))
                 fill = max(0, iw - len(t))
                 content = sel + " " * fill
             else:
@@ -108,21 +104,16 @@ class SettingsMenu:
 
             lines.append(move(ox, oy + 3 + i) + bdr(VT) + content + bdr(VT))
 
-        # Row 10: ├────────┤
         sep_y = oy + 3 + len(ALL_SETTINGS)
         lines.append(move(ox, sep_y) + bdr("\u251c" + hline + "\u2524"))
 
-        # Row 11: footer
         ft = "\u2191\u2193 nav  \u2190\u2192 adj"
         content = ftr(ft) + " " * max(0, iw - len(ft))
         lines.append(move(ox, sep_y + 1) + bdr(VT) + content + bdr(VT))
 
-        # Row 12: └────────┘
         lines.append(move(ox, sep_y + 2) + bdr("\u2514" + hline + "\u2518"))
 
-        # All in one print via \r\n join
         print("\r".join(lines), end="")
-
         self._panel_bounds = (ox, oy, ox + w, oy + h)
 
     def run(self, term, frame: int) -> tuple:

@@ -327,18 +327,28 @@ class MultiModeEngine:
             menu = SettingsMenu(self.config)
             save, needs_reinit = menu.run(self.term, frame)
 
+            # DEBUG: log config state after menu closes
+            import sys
+            sys.stderr.write(f"DEBUG after menu: save={save} reinit={needs_reinit} "
+                             f"color={self.config.color} speed={self.config.speed} "
+                             f"fps={self.config.fps} rainbow={self.config.rainbow}\n")
+            sys.stderr.flush()
+
+            import time
             if save:
                 menu.save_to_file()
+                msg = f"  OK: color={self.config.color} speed={self.config.speed} fps={self.config.fps} rainbow={self.config.rainbow} bold={self.config.bold}  "
+            else:
+                msg = "  DISCARDED (ESC) — press 'q' to save  "
+            print(self.term.move_xy(0, self.term.height - 1) +
+                  self.term.normal + self.term.bright_white(self.term.on_blue(msg)), end="")
+            time.sleep(2)
 
             if needs_reinit:
                 # Charset or lambda changed -> rebuild columns
                 self._columns = []
                 self._grid = []
                 self._init_layout()
-
-            # FPS changed -> will be picked up on next frame loop
-            # Speed changed -> will be picked up on next frame loop
-            # Color/rainbow/bold changed -> renderer reads live from config
         except Exception as e:
             # Log error to terminal and resume
             with self.term.location(0, 0):
