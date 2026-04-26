@@ -107,13 +107,17 @@ class SettingsMenu:
         sep_y = oy + 3 + len(ALL_SETTINGS)
         lines.append(move(ox, sep_y) + bdr("\u251c" + hline + "\u2524"))
 
-        ft = "\u2191\u2193 nav  \u2190\u2192 adj"
+        ft = "\u2191\u2193 nav  \u2190\u2192 adj | 'q' SAVE  'ESC' cancel"
         content = ftr(ft) + " " * max(0, iw - len(ft))
         lines.append(move(ox, sep_y + 1) + bdr(VT) + content + bdr(VT))
 
         lines.append(move(ox, sep_y + 2) + bdr("\u2514" + hline + "\u2518"))
 
-        print("\r".join(lines), end="")
+        # Force terminal to last line, then clear and print each row
+        print(term.move_xy(0, term.height - h), end="")
+        for line in lines:
+            print(term.clear_eol, end="")
+            print(line, end="\n")
         self._panel_bounds = (ox, oy, ox + w, oy + h)
 
     def run(self, term, frame: int) -> tuple:

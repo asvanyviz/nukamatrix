@@ -68,6 +68,7 @@ class MultiModeEngine:
 
         # Offscreen buffer for mode-specific clearing
         self._last_rendered_zones: list[tuple[int, int, int, int]] = []
+        self._last_speed = None  # for speed change detection across settings saves
 
     # ── Setup / Teardown ────────────────────────────────────────
 
@@ -188,7 +189,7 @@ class MultiModeEngine:
                 frame_interval = 1.0 / fps
 
                 # Detect config changes that affect column intervals
-                if hasattr(self, '_last_speed') and self._last_speed != self.config.speed:
+                if self._last_speed is not None and self._last_speed != self.config.speed:
                     # Speed changed — update all column intervals
                     for col in self._columns:
                         col.update_interval = max(1, speed_to_interval(self.config.speed))
@@ -337,11 +338,11 @@ class MultiModeEngine:
             import time
             if save:
                 menu.save_to_file()
-                msg = f"  OK: color={self.config.color} speed={self.config.speed} fps={self.config.fps} rainbow={self.config.rainbow} bold={self.config.bold}  "
+                msg = f"  SAVED  color={self.config.color}  speed={self.config.speed}  fps={self.config.fps}"
             else:
-                msg = "  DISCARDED (ESC) — press 'q' to save  "
-            print(self.term.move_xy(0, self.term.height - 1) +
-                  self.term.normal + self.term.bright_white(self.term.on_blue(msg)), end="")
+                msg = f"  DISCARDED  color={self.config.color}  speed={self.config.speed}"
+            # Simple render - just normal text on last line
+            print(self.term.move_xy(0, self.term.height - 1) + self.term.reverse(msg), end="")
             time.sleep(2)
 
             if needs_reinit:
