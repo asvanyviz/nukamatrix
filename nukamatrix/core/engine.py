@@ -206,7 +206,7 @@ class MultiModeEngine:
                 self._render()
 
                 # 4. Check input
-                self._check_input()
+                self._check_input(self._frame)
 
                 # 5. Frame timing
                 self._frame += 1
@@ -307,9 +307,26 @@ class MultiModeEngine:
                 mid_line2 += c(self.term.move_xy(x, half_h) + "─")
         print(mid_line2, end="")
 
+    # ── Settings ────────────────────────────────────────────────
+
+    def _open_settings(self, frame: int) -> None:
+        """Open the settings menu overlay."""
+        from nukamatrix.settings import SettingsMenu
+        menu = SettingsMenu(self.config)
+        save, needs_reinit = menu.run(self.term, frame)
+
+        if save:
+            menu.save_to_file()
+
+        if needs_reinit:
+            # Charset or lambda changed -> rebuild columns
+            self._columns = []
+            self._grid = []
+            self._init_layout()
+
     # ── Input ───────────────────────────────────────────────────
 
-    def _check_input(self):
+    def _check_input(self, frame: int = 0):
         """Check for non-blocking keyboard input."""
         key = self.term.inkey(timeout=0)
         if not key:
@@ -318,6 +335,11 @@ class MultiModeEngine:
         # Screensaver mode — exit on any key
         if self.config.screensaver:
             self.stop()
+            return
+
+        # Open settings menu
+        if key.lower() == "p":
+            self._open_settings(frame)
             return
 
         if key.lower() == "q" or key.name == "KEY_ESCAPE":
