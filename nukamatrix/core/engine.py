@@ -311,18 +311,31 @@ class MultiModeEngine:
 
     def _open_settings(self, frame: int) -> None:
         """Open the settings menu overlay."""
-        from nukamatrix.settings import SettingsMenu
-        menu = SettingsMenu(self.config)
-        save, needs_reinit = menu.run(self.term, frame)
+        import traceback as _tb
+        try:
+            from nukamatrix.settings import SettingsMenu
+            menu = SettingsMenu(self.config)
+            save, needs_reinit = menu.run(self.term, frame)
 
-        if save:
-            menu.save_to_file()
+            if save:
+                menu.save_to_file()
 
-        if needs_reinit:
-            # Charset or lambda changed -> rebuild columns
-            self._columns = []
-            self._grid = []
-            self._init_layout()
+            if needs_reinit:
+                # Charset or lambda changed -> rebuild columns
+                self._columns = []
+                self._grid = []
+                self._init_layout()
+        except Exception as e:
+            # Log error to terminal and resume
+            with self.term.location(0, 0):
+                print(self.term.move_xy(0, 0) + self.term.on_red(self.term.white(f" [Settings Error: {e}] ")) + "  press key to continue  ", end="")
+            # Show traceback at bottom of screen
+            tb_text = _tb.format_exc()
+            for i, line in enumerate(tb_text.splitlines()):
+                print(self.term.move_xy(0, self.term.height - 3 + i) + self.term.red(line), end="")
+            # Wait for any key
+            while not self.term.inkey(timeout=0.1):
+                pass
 
     # ── Input ───────────────────────────────────────────────────
 
