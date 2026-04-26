@@ -125,7 +125,7 @@ class MultiModeEngine:
             Column(
                 col_index=c * COLUMN_STEP + ox,
                 max_rows=oy + h,
-                offset_row=oy,
+                base_row=oy,
                 zone_h=h,
                 charset=self.config.effective_charset,
                 base_interval=max(1, self.config.update_interval),
